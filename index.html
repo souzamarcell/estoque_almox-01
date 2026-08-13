@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>SysSec WMS | Gestão de Estoque e Almoxarifado</title>
+<style>
+/* ===================================================================
+   1. RESET & VARIÁVEIS
+=================================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#0d6efd; --primary-dark:#0b5ed7; --primary-light:#e7f1ff;
+  --success:#198754; --success-light:#d1e7dd;
+  --danger:#dc3545; --danger-light:#f8d7da;
+  --warning:#ffc107; --warning-light:#fff3cd;
+  --info:#0dcaf0; --info-light:#cff4fc;
+  --bg:#f4f6f9; --surface:#ffffff; --border:#e2e6ec;
+  --text:#1c2434; --text-muted:#6b7280;
+  --sidebar-bg:#111827; --sidebar-text:#c9d2e0; --sidebar-active:#0d6efd;
+  --radius:10px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+  --shadow-lg:0 10px 30px rgba(16,24,40,.15);
+  --sidebar-w:260px; --sidebar-w-collapsed:76px; --topbar-h:64px;
+  --transition:.22s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"]{
+  --bg:#0f1420; --surface:#171e2c; --border:#2a3242;
+  --text:#e6e9f0; --text-muted:#93a0b4;
+  --primary-light:#16233d; --success-light:#123326; --danger-light:#3a1620;
+  --warning-light:#3a2f0d; --info-light:#0e2f38;
+  --sidebar-bg:#0a0e17;
+}
+html,body{height:100%}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#9aa5b5;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ===================================================================
+   2. LOGIN
+=================================================================== */
+#loginScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0b1120 0%,#0d6efd 140%);z-index:9999;padding:16px}
+.login-card{background:var(--surface);border-radius:16px;padding:40px 36px;width:100%;max-width:380px;box-shadow:var(--shadow-lg);text-align:center}
+.login-logo{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--primary),#4dabf7);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#fff}
+.login-card h1{font-size:19px;margin-bottom:2px}
+.login-card p.sub{color:var(--text-muted);font-size:13px;margin-bottom:24px}
+.field{margin-bottom:16px;text-align:left}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-muted);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);transition:border-color var(--transition)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+.btn{border:none;border-radius:8px;padding:10px 16px;font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;transition:all var(--transition)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-block{width:100%;justify-content:center;padding:11px}
+.btn-secondary{background:var(--border);color:var(--text)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-sm{padding:6px 10px;font-size:12px}
+.login-hint{margin-top:18px;font-size:11.5px;color:var(--text-muted);background:var(--bg);padding:8px;border-radius:8px}
+.login-error{background:var(--danger-light);color:var(--danger);padding:9px;border-radius:8px;font-size:12.5px;margin-bottom:14px;display:none}
+
+/* ===================================================================
+   3. APP SHELL
+=================================================================== */
+#app{display:none}
+.shell{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;
+  display:flex;flex-direction:column;transition:width var(--transition);position:fixed;top:0;bottom:0;left:0;z-index:400;overflow:hidden}
+.sidebar.collapsed{width:var(--sidebar-w-collapsed)}
+.sidebar-head{height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-head .logo-box{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--primary),#4dabf7);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-head .brand{font-weight:700;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-group-label{padding:14px 20px 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#6b7688;white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;color:var(--sidebar-text);font-size:13.5px;font-weight:500;white-space:nowrap;position:relative;transition:background var(--transition)}
+.nav-item svg{flex-shrink:0;width:18px;height:18px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:rgba(13,110,253,.18);color:#fff}
+.nav-item.active::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sidebar-active)}
+.sidebar.collapsed .brand,.sidebar.collapsed .nav-group-label,.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-item{justify-content:center;padding:12px 0}
+.sidebar-foot{padding:12px;border-top:1px solid rgba(255,255,255,.08)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:390}
+.overlay.show{display:block}
+
+.main{flex:1;margin-left:var(--sidebar-w);transition:margin-left var(--transition);display:flex;flex-direction:column;min-width:0}
+.main.collapsed{margin-left:var(--sidebar-w-collapsed)}
+.topbar{height:var(--topbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 20px;position:sticky;top:0;z-index:200}
+.hamburger{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hamburger svg{width:18px;height:18px}
+.topbar-search{flex:1;max-width:420px;position:relative}
+.topbar-search input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)}
+.topbar-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted)}
+.search-results{position:absolute;top:110%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-lg);max-height:320px;overflow-y:auto;z-index:300;display:none}
+.search-results.show{display:block}
+.search-result-item{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer}
+.search-result-item:hover{background:var(--bg)}
+.search-result-item small{display:block;color:var(--text-muted);font-size:11px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;position:relative}
+.icon-btn svg{width:17px;height:17px}
+.badge-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+.user-chip{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;border-radius:20px;background:var(--bg);border:1px solid var(--border);cursor:pointer}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.user-chip .uname{font-size:12.5px;font-weight:600}
+.user-chip .urole{font-size:10.5px;color:var(--text-muted)}
+
+.content{padding:22px;flex:1}
+.breadcrumb{font-size:12.5px;color:var(--text-muted);margin-bottom:6px;display:flex;gap:6px;align-items:center}
+.page-title{font-size:21px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.page-title .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===================================================================
+   4. CARDS / GRID / KPI
+=================================================================== */
+.grid{display:grid;gap:16px}
+.kpi-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:20px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.kpi-card .kpi-top{display:flex;justify-content:space-between;align-items:flex-start}
+.kpi-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.kpi-icon svg{width:19px;height:19px}
+.kpi-value{font-size:24px;font-weight:800}
+.kpi-label{color:var(--text-muted);font-size:12.5px;font-weight:600}
+.kpi-trend{font-size:11.5px;font-weight:600}
+.kpi-trend.up{color:var(--success)}
+.kpi-trend.down{color:var(--danger)}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.panel-head h3{font-size:14.5px;font-weight:700}
+.dash-grid{grid-template-columns:2fr 1fr}
+.dash-grid2{grid-template-columns:1fr 1fr}
+@media (max-width:960px){.dash-grid,.dash-grid2{grid-template-columns:1fr}}
+
+.alert-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.alert-item:last-child{border-bottom:none}
+.alert-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.alert-txt strong{display:block;font-size:12.8px}
+.alert-txt span{font-size:11.5px;color:var(--text-muted)}
+
+/* ===================================================================
+   5. TABELAS / TOOLBAR / PAGINAÇÃO
+=================================================================== */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;justify-content:space-between}
+.toolbar-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex:1}
+.toolbar input[type=text],.toolbar select{padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+thead th{background:var(--bg);text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--primary)}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--bg)}
+.row-actions{display:flex;gap:6px}
+.icon-sm{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);display:inline-flex;align-items:center;justify-content:center}
+.icon-sm svg{width:14px;height:14px}
+.icon-sm:hover{background:var(--bg)}
+.pagination{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-size:12.5px;color:var(--text-muted)}
+.pagination .pg-btns{display:flex;gap:6px}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-success{background:var(--success-light);color:var(--success)}
+.badge-danger{background:var(--danger-light);color:var(--danger)}
+.badge-warning{background:var(--warning-light);color:#92730b}
+.badge-info{background:var(--info-light);color:#087990}
+.badge-muted{background:var(--border);color:var(--text-muted)}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-muted)}
+.empty-state svg{width:46px;height:46px;margin-bottom:10px;opacity:.5}
+
+/* ===================================================================
+   6. MODAL / TOAST
+=================================================================== */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,20,32,.55);z-index:800;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-backdrop.show{display:flex}
+.modal{background:var(--surface);border-radius:14px;width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.modal.modal-lg{max-width:820px}
+.modal.modal-sm{max-width:420px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:16px}
+.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.modal-body{padding:20px;overflow-y:auto}
+.modal-foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+@media (max-width:560px){.form-grid{grid-template-columns:1fr}}
+
+#toastContainer{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:8px;padding:12px 16px;box-shadow:var(--shadow-lg);min-width:260px;max-width:340px;font-size:13px;animation:slideIn .25s ease}
+.toast.success{border-left-color:var(--success)}
+.toast.error{border-left-color:var(--danger)}
+.toast.warning{border-left-color:var(--warning)}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ===================================================================
+   7. RESPONSIVIDADE
+=================================================================== */
+@media (max-width:900px){
+  .sidebar{transform:translateX(-100%);width:270px}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .main,.main.collapsed{margin-left:0}
+  .topbar-search{max-width:none}
+  .kpi-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
+@media (max-width:560px){
+  .content{padding:14px}
+  .topbar{padding:0 12px}
+  .topbar-search{display:none}
+  .page-title{font-size:18px}
+  .login-card{padding:28px 22px}
+}
+.hidden{display:none !important}
+.text-muted{color:var(--text-muted)}
+.text-danger{color:var(--danger)}
+.text-success{color:var(--success)}
+.mt8{margin-top:8px}.mt16{margin-top:16px}.mb8{margin-bottom:8px}
+@media print{
+  .sidebar,.topbar,.toolbar,.row-actions,.page-title .actions,#toastContainer{display:none !important}
+  .main{margin-left:0 !important}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     LOGIN SCREEN
+===================================================================== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.28a1 1 0 0 0-.5-.86L12.5 2.14a1 1 0 0 0-1 0L4 6.42a1 1 0 0 0-.5.86v9.44a1 1 0 0 0 .5.86l7.5 4.28a1 1 0 0 0 1 0l7.5-4.28a1 1 0 0 0 .5-.86Z"/><path d="m3.5 7.28 8.5 4.9 8.5-4.9M12 22V12.2"/></svg>
+    </div>
+    <h1>SysSec WMS</h1>
+    <p class="sub">Gestão de Estoque &amp; Almoxarifado</p>
+    <div class="login-error" id="loginError">Usuário ou senha inválidos.</div>
+    <form id="loginForm" autocomplete="off">
+      <div class="field"><label>Usuário</label><input type="text" id="loginUser" placeholder="Admin" required></div>
+      <div class="field"><label>Senha</label><input type="password" id="loginPass" placeholder="••••••••" required></div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+    </form>
+    <div class="login-hint">Usuário padrão: <strong>Admin</strong> &nbsp;|&nbsp; Senha: <strong>123</strong></div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     APP SHELL
+===================================================================== -->
+<div id="app">
+<div class="overlay" id="overlay"></div>
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="logo-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.28a1 1 0 0 0-.5-.86L12.5 2.14a1 1 0 0 0-1 0L4 6.42a1 1 0 0 0-.5.86v9.44a1 1 0 0 0 .5.86l7.5 4.28a1 1 0 0 0 1 0l7.5-4.28a1 1 0 0 0 .5-.86Z"/><path d="m3.5 7.28 8.5 4.9 8.5-4.9M12 22V12.2"/></svg></div>
+      <span class="brand" id="brandName">SysSec WMS</span>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-foot">
+      <button class="btn btn-outline btn-block btn-sm" id="btnLogoutSide" style="color:#c9d2e0;border-color:rgba(255,255,255,.15)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+        <span class="nav-label">Sair</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main" id="mainWrap">
+    <header class="topbar">
+      <button class="hamburger" id="btnHamburger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="globalSearch" placeholder="Pesquisar produto, código, fornecedor, lote...">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="btnThemeToggle" title="Alternar tema">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+        <button class="icon-btn" id="btnAlerts" title="Alertas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="badge-dot" id="alertDot"></span>
+        </button>
+        <div class="user-chip" id="userChip">
+          <div class="user-avatar" id="userAvatar">A</div>
+          <div>
+            <div class="uname" id="userName">Admin</div>
+            <div class="urole" id="userRole">Administrador</div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="content" id="viewContainer"></main>
+  </div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBox">
+    <div class="modal-head">
+      <h3 id="modalTitle">Título</h3>
+      <button class="modal-close" id="modalCloseBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+/* =====================================================================
+   SECTION A — CONFIGURAÇÃO GERAL, BANCO DE DADOS (LocalStorage)
+===================================================================== */
+const DB_KEYS = ["usuarios","produtos","categorias","fornecedores","entradas","saidas","transferencias",
+  "inventarios","ajustes","movimentacoes","lotes","localizacoes","auditoria","configuracoes"];
+const LS_PREFIX = "wms_";
+const SEED_FLAG = LS_PREFIX+"seed_loaded";
+const SESSION_KEY = LS_PREFIX+"session";
+const SIDEBAR_KEY = LS_PREFIX+"sidebar_collapsed";
+const INACTIVITY_LIMIT_MIN = 20;
+
+function dbGet(key){ try{ return JSON.parse(localStorage.getItem(LS_PREFIX+key)) || []; }catch(e){ return []; } }
+function dbSet(key,val){ localStorage.setItem(LS_PREFIX+key, JSON.stringify(val)); }
+function dbGetObj(key,fallback){ try{ const v=JSON.parse(localStorage.getItem(LS_PREFIX+key)); return v||fallback; }catch(e){ return fallback; } }
+function nextId(key){ const arr=dbGet(key); return arr.length? Math.max(...arr.map(r=>r.id))+1 : 1; }
+function pad(n,len){ return String(n).padStart(len,"0"); }
+function fmtMoney(v){ const cur = (dbGetObj("configuracoes",{}).moeda)||"BRL"; const sym = cur==="BRL"?"R$":(cur==="USD"?"US$":"€"); return sym+" "+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(d){ if(!d) return "-"; const dt=new Date(d+"T00:00:00"); if(isNaN(dt)) return d; return dt.toLocaleDateString('pt-BR'); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function nowTime(){ return new Date().toLocaleTimeString('pt-BR'); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+/* ---------------------------------------------------------------------
+   Inicialização inteligente do banco
+--------------------------------------------------------------------- */
+function ensureStructures(){
+  DB_KEYS.forEach(k=>{ if(localStorage.getItem(LS_PREFIX+k)===null){ dbSet(k, k==="configuracoes"?{}:[]); } });
+  if(!dbGetObj("configuracoes",null) || Array.isArray(dbGetObj("configuracoes",null)) ){
+    dbSet("configuracoes",{nomeEmpresa:"SysSec Tecnologia",logo:"",tema:"light",idioma:"pt-BR",moeda:"BRL"});
+  }
+}
+
+function ensureAdminUser(){
+  let users = dbGet("usuarios");
+  if(!users.find(u=>u.usuario==="Admin")){
+    users.push({id:nextId("usuarios"),nome:"Administrador do Sistema",usuario:"Admin",senha:"123",perfil:"Administrador",email:"admin@syssec.com.br",status:"Ativo",criadoEm:todayISO()});
+    dbSet("usuarios",users);
+  }
+}
+
+/* =====================================================================
+   SECTION B — GERADOR DE DADOS DE DEMONSTRAÇÃO (15 registros/módulo)
+===================================================================== */
+function gerarSeed(){
+  const categorias = [
+    ["CAT001","Ferramentas Manuais","Ferramentas de uso manual em geral"],
+    ["CAT002","Equipamentos de Proteção","EPIs diversos"],
+    ["CAT003","Material Elétrico","Fios, cabos, disjuntores"],
+    ["CAT004","Material Hidráulico","Conexões e tubulações"],
+    ["CAT005","Informática","Periféricos e componentes"],
+    ["CAT006","Papelaria","Material de escritório"],
+    ["CAT007","Limpeza","Produtos de higienização"],
+    ["CAT008","Embalagens","Caixas e materiais de embalagem"],
+    ["CAT009","Peças Automotivas","Peças e componentes de veículos"],
+    ["CAT010","Químicos","Produtos químicos industriais"],
+    ["CAT011","Parafusos e Fixadores","Parafusos, porcas, arruelas"],
+    ["CAT012","Tintas e Solventes","Tintas industriais"],
+    ["CAT013","Rolamentos","Rolamentos e mancais"],
+    ["CAT014","Mangueiras","Mangueiras industriais"],
+    ["CAT015","Instrumentos de Medição","Paquímetros, multímetros"]
+  ].map((c,i)=>({id:i+1,codigo:c[0],nome:c[1],descricao:c[2],status:"Ativo"}));
+  dbSet("categorias",categorias);
+
+  const fornecedoresBase = [
+    ["Ferragens Campinas Ltda","Ferragens Campinas","12.345.678/0001-90","Carlos Mendes","(19) 3251-4400","contato@ferragenscampinas.com.br"],
+    ["Distribuidora São Paulo EPI S.A.","SP EPI Distribuidora","23.456.789/0001-11","Fernanda Lima","(11) 4002-8922","vendas@spepi.com.br"],
+    ["Elétrica Industrial Brasil Ltda","Elétrica Brasil","34.567.890/0001-22","Roberto Alves","(19) 3234-5566","comercial@eletricabrasil.com.br"],
+    ["Hidro Conexões Comércio Ltda","Hidro Conexões","45.678.901/0001-33","Juliana Costa","(19) 3345-6677","juliana@hidroconexoes.com.br"],
+    ["TechSupply Informática Ltda","TechSupply","56.789.012/0001-44","Marcos Souza","(11) 3456-7788","marcos@techsupply.com.br"],
+    ["Papelaria Central Distribuidora","Papelaria Central","67.890.123/0001-55","Ana Paula Ribeiro","(19) 3456-8899","anapaula@papelariacentral.com.br"],
+    ["Química Limp Produtos de Limpeza","Química Limp","78.901.234/0001-66","Paulo Henrique","(19) 3567-9900","paulo@quimicalimp.com.br"],
+    ["Embalagens Sul Ltda","Embalagens Sul","89.012.345/0001-77","Renata Souza","(47) 3678-0011","renata@embalagenssul.com.br"],
+    ["Auto Peças Vale Ltda","Auto Peças Vale","90.123.456/0001-88","Diego Martins","(19) 3789-1122","diego@autopecasvale.com.br"],
+    ["Química Industrial Nacional S.A.","Química Nacional","01.234.567/0001-99","Sandra Oliveira","(11) 3890-2233","sandra@quimicanacional.com.br"],
+    ["Parafusos & Fixadores do Brasil","Parafusos Brasil","11.222.333/0001-44","Eduardo Santos","(19) 3901-3344","eduardo@parafusosbrasil.com.br"],
+    ["Tintas Industriais Campinas","Tintas Campinas","22.333.444/0001-55","Larissa Fernandes","(19) 3012-4455","larissa@tintascampinas.com.br"],
+    ["Rolamentos Sul Americana Ltda","Rolamentos SA","33.444.555/0001-66","Bruno Cardoso","(47) 3123-5566","bruno@rolamentossa.com.br"],
+    ["Mangueiras & Conexões Industriais","Mangueiras Ind.","44.555.666/0001-77","Camila Rocha","(19) 3234-6677","camila@mangueirasind.com.br"],
+    ["Instrumentos de Precisão Ltda","Instrumentos Precisão","55.666.777/0001-88","Rafael Nogueira","(11) 3345-7788","rafael@instrumentosprecisao.com.br"]
+  ];
+  const cidades=["Campinas/SP","São Paulo/SP","Valinhos/SP","Vinhedo/SP","Indaiatuba/SP","Sumaré/SP","Jundiaí/SP","Americana/SP","Hortolândia/SP","Paulínia/SP","Louveira/SP","Itatiba/SP","Limeira/SP","Piracicaba/SP","Rio Claro/SP"];
+  const fornecedores = fornecedoresBase.map((f,i)=>({
+    id:i+1, razaoSocial:f[0], nomeFantasia:f[1], cnpj:f[2], contato:f[3], telefone:f[4], email:f[5],
+    site:"www."+f[5].split("@")[1], endereco:"Rua Industrial, "+(100+i*7)+" - "+cidades[i],
+    produtosFornecidos:categorias[i%categorias.length].nome, observacoes:"Fornecedor homologado desde "+(2018+(i%6)), status:"Ativo"
+  }));
+  dbSet("fornecedores",fornecedores);
+
+  const depositos=["Depósito Central","Depósito Filial Norte"];
+  const localizacoes=[];
+  for(let i=0;i<15;i++){
+    localizacoes.push({
+      id:i+1, codigo:"LOC-"+pad(i+1,3), deposito:depositos[i%2],
+      corredor:"C"+(1+(i%5)), rua:"R"+(1+(i%8)), prateleira:"P"+(1+(i%6)),
+      nivel:String(1+(i%4)), posicao:String(1+(i%10))
+    });
+  }
+  dbSet("localizacoes",localizacoes);
+
+  const produtosBase = [
+    ["Martelo Unha 27mm","Martelo com cabo de fibra de vidro",1,"UN","Tramontina","Tramontina","MT-27"],
+    ["Capacete de Segurança Classe B","Capacete com jugular ajustável",2,"UN","3M","3M do Brasil","CS-100"],
+    ["Cabo Flexível 2,5mm 100m","Cabo elétrico flexível antichama",3,"RL","Prysmian","Prysmian","CB-25"],
+    ["Joelho PVC 90° 25mm","Conexão hidráulica soldável",4,"UN","Tigre","Tigre S.A.","JL-25"],
+    ["Mouse Óptico USB","Mouse óptico com fio 1000dpi",5,"UN","Logitech","Logitech","M90"],
+    ["Papel A4 75g Resma","Resma de papel sulfite branco",6,"CX","Chamex","Suzano","PA4-75"],
+    ["Detergente Neutro 5L","Detergente concentrado para limpeza geral",7,"UN","Ypê","Química Amparo","DT-5L"],
+    ["Caixa de Papelão Ondulado 40x30x30","Caixa reforçada para transporte",8,"UN","EmbalaSul","EmbalaSul","CX-403030"],
+    ["Filtro de Óleo Automotivo","Filtro compatível com linha leve",9,"UN","Tecfil","Tecfil","FO-320"],
+    ["Álcool Isopropílico 1L","Solvente de limpeza técnica",10,"UN","Química Nacional","Química Nacional","AI-1L"],
+    ["Parafuso Sextavado M8x40","Parafuso zincado com porca e arruela",11,"CX","Ciser","Ciser","PS-840"],
+    ["Tinta Esmalte Sintético Branco 3,6L","Tinta industrial de alta cobertura",12,"UN","Coral","Coral Tintas","TE-36"],
+    ["Rolamento Rígido de Esferas 6204","Rolamento para eixos de baixa carga",13,"UN","NSK","NSK","RL-6204"],
+    ["Mangueira Hidráulica 1/2\" 10m","Mangueira reforçada de alta pressão",14,"RL","Parker","Parker","MH-12"],
+    ["Paquímetro Digital 150mm","Instrumento de medição de precisão",15,"UN","Mitutoyo","Mitutoyo","PQ-150"]
+  ];
+  const produtos = produtosBase.map((p,i)=>{
+    const min=10+i*2, max=100+i*10, atual = (i%4===0)? Math.max(0,min-3) : Math.round(min + Math.random()*(max-min));
+    const compra = Math.round((15+i*7.3)*100)/100, venda = Math.round(compra*1.35*100)/100;
+    return {
+      id:i+1, codigo:"PRD-"+pad(i+1,4), codigoBarras:"789"+pad(1000000+i*37,10),
+      nome:p[0], descricao:p[1], categoriaId:p[2], unidade:p[3], marca:p[4], fabricante:p[5], modelo:p[6],
+      localizacaoId:(i%15)+1, estoqueMin:min, estoqueMax:max, estoqueAtual:atual,
+      valorMedio:compra, valorCompra:compra, valorVenda:venda,
+      ncm:pad(84670000+i,10), observacoes:"Produto homologado para uso industrial", status:"Ativo"
+    };
+  });
+  dbSet("produtos",produtos);
+
+  // Lotes (15) vinculados a produtos, com validades variadas (vencidos, próximos, futuros)
+  const lotes=[];
+  for(let i=0;i<15;i++){
+    const prod = produtos[i];
+    let validadeOffset;
+    if(i%5===0) validadeOffset=-15; // vencido
+    else if(i%5===1) validadeOffset=20; // próximo (30d)
+    else if(i%5===2) validadeOffset=55; // próximo (60d)
+    else if(i%5===3) validadeOffset=80; // próximo (90d)
+    else validadeOffset=240; // futuro
+    const dtFab = new Date(); dtFab.setDate(dtFab.getDate()-200);
+    const dtVal = new Date(); dtVal.setDate(dtVal.getDate()+validadeOffset);
+    lotes.push({
+      id:i+1, produtoId:prod.id, numeroLote:"LT"+pad(2026,4)+"-"+pad(i+1,3),
+      fabricante:prod.fabricante, dataFabricacao:dtFab.toISOString().slice(0,10),
+      dataValidade:dtVal.toISOString().slice(0,10),
+      quantidade:Math.round(5+Math.random()*40), localizacaoId:(i%15)+1,
+      situacao: validadeOffset<0 ? "Vencido" : (validadeOffset<=90?"Próximo ao Vencimento":"Regular")
+    });
+  }
+  dbSet("lotes",lotes);
+
+  const responsaveis=["Marcell Souza","João Pedro","Mariana Alves","Lucas Ferreira","Beatriz Nunes"];
+  const centrosCusto=["Produção","Manutenção","Administrativo","Almoxarifado","Qualidade","Logística"];
+  const motivosSaida=["Consumo em produção","Manutenção preventiva","Uso administrativo","Requisição de obra","Substituição de peça"];
+
+  // Entradas (15)
+  const entradas=[];
+  for(let i=0;i<15;i++){
+    const prod=produtos[i]; const forn=fornecedores[i%fornecedores.length]; const lote=lotes[i];
+    const d=new Date(); d.setDate(d.getDate()-(30-i*2));
+    const qtd = 10+i*3; const vUnit=prod.valorCompra;
+    entradas.push({
+      id:i+1, numero:"ENT-"+pad(2026,4)+pad(i+1,4), data:d.toISOString().slice(0,10),
+      fornecedorId:forn.id, notaFiscal:"NF-"+pad(50000+i*13,6), produtoId:prod.id, loteId:lote.id,
+      validade:lote.dataValidade, quantidade:qtd, valorUnitario:vUnit, valorTotal:Math.round(qtd*vUnit*100)/100,
+      responsavel:responsaveis[i%responsaveis.length], observacoes:"Recebimento conferido sem avarias"
+    });
+  }
+  dbSet("entradas",entradas);
+
+  // Saídas (15)
+  const saidas=[];
+  for(let i=0;i<15;i++){
+    const prod=produtos[(i+3)%produtos.length];
+    const d=new Date(); d.setDate(d.getDate()-(25-i));
+    const qtd = 2+ (i%6);
+    saidas.push({
+      id:i+1, numero:"SAI-"+pad(2026,4)+pad(i+1,4), data:d.toISOString().slice(0,10),
+      produtoId:prod.id, quantidade:qtd, centroCusto:centrosCusto[i%centrosCusto.length],
+      destino:centrosCusto[i%centrosCusto.length]+" - Unidade Campinas",
+      responsavel:responsaveis[(i+1)%responsaveis.length], motivo:motivosSaida[i%motivosSaida.length],
+      observacoes:"Saída conforme requisição interna"
+    });
+  }
+  dbSet("saidas",saidas);
+
+  // Transferências (15)
+  const transferencias=[];
+  for(let i=0;i<15;i++){
+    const prod=produtos[(i+5)%produtos.length];
+    const d=new Date(); d.setDate(d.getDate()-(20-i));
+    const origem=(i%15)+1, destino=((i+3)%15)+1;
+    transferencias.push({
+      id:i+1, numero:"TRF-"+pad(2026,4)+pad(i+1,4), data:d.toISOString().slice(0,10),
+      produtoId:prod.id, quantidade:3+(i%5), origemId:origem, destinoId: destino===origem?((destino%15)+1):destino,
+      responsavel:responsaveis[(i+2)%responsaveis.length], observacoes:"Reorganização de estoque físico"
+    });
+  }
+  dbSet("transferencias",transferencias);
+
+  // Ajustes (15)
+  const tiposAjuste=["Entrada Manual","Saída Manual","Correção","Perda","Quebra","Vencimento","Consumo Interno"];
+  const ajustes=[];
+  for(let i=0;i<15;i++){
+    const prod=produtos[(i+7)%produtos.length];
+    const d=new Date(); d.setDate(d.getDate()-(18-i));
+    const tipo=tiposAjuste[i%tiposAjuste.length];
+    const qtd = (tipo==="Entrada Manual") ? (2+i%6) : -(1+i%4);
+    ajustes.push({
+      id:i+1, numero:"AJT-"+pad(2026,4)+pad(i+1,4), data:d.toISOString().slice(0,10),
+      produtoId:prod.id, tipo:tipo, quantidade:qtd, motivo:"Ajuste referente a "+tipo.toLowerCase(),
+      responsavel:responsaveis[(i+3)%responsaveis.length]
+    });
+  }
+  dbSet("ajustes",ajustes);
+
+  // Inventários (15)
+  const tiposInv=["Geral","Rotativo","Categoria","Localização","Lote"];
+  const inventarios=[];
+  for(let i=0;i<15;i++){
+    const prod=produtos[(i+2)%produtos.length];
+    const d=new Date(); d.setDate(d.getDate()-(10-((i)%10)));
+    const qtdSistema = prod.estoqueAtual;
+    const diff = (i%3===0)? -(1+i%3) : (i%3===1? (1+i%2):0);
+    const qtdFisica = Math.max(0,qtdSistema+diff);
+    inventarios.push({
+      id:i+1, numero:"INV-"+pad(2026,4)+pad(i+1,4), data:d.toISOString().slice(0,10),
+      tipo:tiposInv[i%tiposInv.length], produtoId:prod.id,
+      qtdSistema:qtdSistema, qtdFisica:qtdFisica, diferenca:qtdFisica-qtdSistema,
+      responsavel:responsaveis[(i+4)%responsaveis.length]
+    });
+  }
+  dbSet("inventarios",inventarios);
+
+  // Usuários (perfis variados) — inclui admin garantido à parte
+  const perfis=["Almoxarife","Estoquista","Supervisor","Gerente","Auditor","Consulta"];
+  const nomes=["João Pedro Martins","Mariana Alves Souza","Lucas Ferreira Lima","Beatriz Nunes Costa","Rafael Torres","Camila Duarte","Eduardo Ramos","Larissa Prado","Bruno Castro","Sandra Melo","Diego Barros","Patrícia Gomes","Vinícius Rocha","Aline Farias"];
+  const usuarios=[{id:1,nome:"Administrador do Sistema",usuario:"Admin",senha:"123",perfil:"Administrador",email:"admin@syssec.com.br",status:"Ativo",criadoEm:todayISO()}];
+  for(let i=0;i<14;i++){
+    usuarios.push({
+      id:i+2, nome:nomes[i], usuario:nomes[i].split(" ")[0].toLowerCase()+"."+nomes[i].split(" ")[1].toLowerCase(),
+      senha:"Senha@123", perfil:perfis[i%perfis.length],
+      email:nomes[i].split(" ")[0].toLowerCase()+"@syssec.com.br", status: i%9===0?"Inativo":"Ativo", criadoEm:todayISO()
+    });
+  }
+  dbSet("usuarios",usuarios);
+
+  // Movimentações (derivadas + completar 15)
+  const movimentacoes=[];
+  let mid=1;
+  entradas.slice(0,5).forEach(e=>movimentacoes.push({id:mid++,tipo:"Entrada",produtoId:e.produtoId,quantidade:e.quantidade,usuario:e.responsavel,data:e.data,hora:"09:1"+mid,origem:fornecedores.find(f=>f.id===e.fornecedorId).nomeFantasia,destino:"Estoque",motivo:"Recebimento de mercadoria"}));
+  saidas.slice(0,5).forEach(s=>movimentacoes.push({id:mid++,tipo:"Saída",produtoId:s.produtoId,quantidade:s.quantidade,usuario:s.responsavel,data:s.data,hora:"10:2"+mid,origem:"Estoque",destino:s.destino,motivo:s.motivo}));
+  transferencias.slice(0,3).forEach(t=>movimentacoes.push({id:mid++,tipo:"Transferência",produtoId:t.produtoId,quantidade:t.quantidade,usuario:t.responsavel,data:t.data,hora:"11:3"+mid,origem:"LOC-"+pad(t.origemId,3),destino:"LOC-"+pad(t.destinoId,3),motivo:"Transferência entre localizações"}));
+  ajustes.slice(0,2).forEach(a=>movimentacoes.push({id:mid++,tipo:"Ajuste",produtoId:a.produtoId,quantidade:a.quantidade,usuario:a.responsavel,data:a.data,hora:"14:0"+mid,origem:"-",destino:"-",motivo:a.tipo}));
+  dbSet("movimentacoes",movimentacoes);
+
+  // Auditoria (15)
+  const acoes=["Login","Logout","Inclusão","Alteração","Exclusão","Entrada","Saída","Transferência","Inventário","Backup"];
+  const telas=["Login","Dashboard","Produtos","Entradas","Saídas","Transferências","Inventário","Configurações"];
+  const auditoria=[];
+  for(let i=0;i<15;i++){
+    const d=new Date(); d.setDate(d.getDate()-(14-i));
+    auditoria.push({
+      id:i+1, usuario: i===0?"Admin":responsaveis[i%responsaveis.length],
+      data:d.toISOString().slice(0,10), hora:pad(8+(i%10),2)+":"+pad((i*7)%60,2)+":00",
+      acao:acoes[i%acoes.length], tela:telas[i%telas.length], navegador:"Chrome / Windows"
+    });
+  }
+  dbSet("auditoria",auditoria);
+
+  dbSet("configuracoes",{nomeEmpresa:"SysSec Tecnologia",logo:"",tema:"light",idioma:"pt-BR",moeda:"BRL"});
+  localStorage.setItem(SEED_FLAG,"1");
+}
+
+function initDatabase(){
+  ensureStructures();
+  const seeded = localStorage.getItem(SEED_FLAG);
+  if(!seeded){
+    gerarSeed();
+  }
+  ensureAdminUser();
+}
+
+/* =====================================================================
+   SECTION C — AUDITORIA / TOASTS / UTILS DE UI
+===================================================================== */
+function registrarAuditoria(acao,tela){
+  const list=dbGet("auditoria");
+  const u = getSessionUser();
+  list.unshift({id:nextId("auditoria"),usuario:u?u.usuario:"sistema",data:todayISO(),hora:nowTime(),acao:acao,tela:tela,navegador:navigator.userAgent.split(" ").slice(-1)[0]||"Navegador"});
+  dbSet("auditoria",list);
+}
+function toast(msg,type="success"){
+  const c=document.getElementById("toastContainer");
+  const el=document.createElement("div");
+  el.className="toast "+type;
+  el.textContent=msg;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(),300); },3200);
+}
+function confirmModal(msg,onYes){
+  openModal("Confirmação", `<p>${msg}</p>`, [
+    {label:"Cancelar",cls:"btn-secondary",action:closeModal},
+    {label:"Confirmar",cls:"btn-danger",action:()=>{closeModal();onYes();}}
+  ]);
+}
+function openModal(title,bodyHtml,buttons,size=""){
+  document.getElementById("modalTitle").textContent=title;
+  document.getElementById("modalBody").innerHTML=bodyHtml;
+  const foot=document.getElementById("modalFoot");
+  foot.innerHTML="";
+  (buttons||[]).forEach(b=>{
+    const btn=document.createElement("button");
+    btn.className="btn "+(b.cls||"btn-secondary");
+    btn.textContent=b.label;
+    btn.onclick=b.action;
+    foot.appendChild(btn);
+  });
+  const box=document.getElementById("modalBox");
+  box.className="modal "+size;
+  document.getElementById("modalBackdrop").classList.add("show");
+}
+function closeModal(){ document.getElementById("modalBackdrop").classList.remove("show"); }
+document.getElementById("modalCloseBtn").onclick=closeModal;
+document.getElementById("modalBackdrop").addEventListener("click",e=>{ if(e.target.id==="modalBackdrop") closeModal(); });
+
+/* =====================================================================
+   SECTION D — SESSÃO / LOGIN / LOGOUT / INATIVIDADE
+===================================================================== */
+function getSessionUser(){ return dbGetObj("session_current",null) || JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null"); }
+function setSessionUser(user){ sessionStorage.setItem(SESSION_KEY, JSON.stringify({usuario:user.usuario,nome:user.nome,perfil:user.perfil,loginAt:Date.now()})); }
+function clearSessionUser(){ sessionStorage.removeItem(SESSION_KEY); }
+function getSessionUser(){ try{ return JSON.parse(sessionStorage.getItem(SESSION_KEY)); }catch(e){ return null; } }
+
+let inactivityTimer=null;
+function resetInactivityTimer(){
+  clearTimeout(inactivityTimer);
+  inactivityTimer=setTimeout(()=>{ doLogout(true); }, INACTIVITY_LIMIT_MIN*60*1000);
+}
+["click","mousemove","keydown","touchstart"].forEach(evt=>document.addEventListener(evt,()=>{ if(getSessionUser()) resetInactivityTimer(); }));
+
+document.getElementById("loginForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  const u=document.getElementById("loginUser").value.trim();
+  const p=document.getElementById("loginPass").value;
+  const users=dbGet("usuarios");
+  const found=users.find(x=>x.usuario===u && x.senha===p);
+  const errBox=document.getElementById("loginError");
+  if(!found){ errBox.style.display="block"; errBox.textContent="Usuário ou senha inválidos."; return; }
+  if(found.status==="Inativo"){ errBox.style.display="block"; errBox.textContent="Usuário inativo. Contate o administrador."; return; }
+  errBox.style.display="none";
+  setSessionUser(found);
+  registrarAuditoria("Login","Login");
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("app").style.display="block";
+  bootApp();
+});
+
+function doLogout(byInactivity){
+  if(getSessionUser()) registrarAuditoria("Logout","Logout");
+  clearSessionUser();
+  document.getElementById("app").style.display="none";
+  document.getElementById("loginScreen").style.display="flex";
+  document.getElementById("loginForm").reset();
+  if(byInactivity) toast("Sessão encerrada por inatividade.","warning");
+}
+document.getElementById("btnLogoutSide").onclick=()=>doLogout(false);
+
+/* =====================================================================
+   SECTION E — SIDEBAR / NAVEGAÇÃO / TEMA / HAMBÚRGUER
+===================================================================== */
+const MENU = [
+  {group:"Principal", items:[
+    {id:"dashboard", label:"Dashboard", icon:"grid"},
+  ]},
+  {group:"Operações", items:[
+    {id:"entradas", label:"Entrada de Produtos", icon:"in"},
+    {id:"saidas", label:"Saída de Produtos", icon:"out"},
+    {id:"transferencias", label:"Transferências", icon:"swap"},
+    {id:"inventarios", label:"Inventário", icon:"clip"},
+    {id:"ajustes", label:"Ajustes de Estoque", icon:"tune"},
+  ]},
+  {group:"Cadastros", items:[
+    {id:"produtos", label:"Produtos", icon:"box"},
+    {id:"categorias", label:"Categorias", icon:"tag"},
+    {id:"fornecedores", label:"Fornecedores", icon:"truck"},
+    {id:"localizacoes", label:"Localizações", icon:"pin"},
+    {id:"lotes", label:"Lotes / Validade", icon:"cal"},
+  ]},
+  {group:"Análises", items:[
+    {id:"movimentacoes", label:"Movimentações", icon:"list"},
+    {id:"relatorios", label:"Relatórios", icon:"chart"},
+    {id:"auditoria", label:"Auditoria", icon:"shield"},
+  ]},
+  {group:"Sistema", items:[
+    {id:"usuarios", label:"Usuários", icon:"user"},
+    {id:"configuracoes", label:"Configurações", icon:"gear"},
+    {id:"backup", label:"Backup", icon:"download"},
+    {id:"restaurar", label:"Restaurar", icon:"upload"},
+    {id:"sobre", label:"Sobre", icon:"info"},
+  ]},
+];
+const ICONS = {
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  in:'<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+  out:'<path d="M12 21V9m0 0-4 4m4-4 4 4"/><path d="M4 3v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3"/>',
+  swap:'<path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  clip:'<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M9 2h6v4H9z"/><path d="m9 12 2 2 4-4"/>',
+  tune:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M2 14h4M10 8h4M18 12h4"/>',
+  box:'<path d="M21 8V6a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 6v12a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7v-2"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
+  tag:'<path d="M12 2H2v10l9.3 9.3a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8Z"/><circle cx="7" cy="7" r="1.3"/>',
+  truck:'<path d="M1 3h13v13H1z"/><path d="M14 8h4l4 4v4h-8V8Z"/><circle cx="5.5" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/>',
+  pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  chart:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/>',
+  shield:'<path d="M12 2 4 5v6c0 5.5 3.8 9.7 8 11 4.2-1.3 8-5.5 8-11V5Z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+  download:'<path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+  upload:'<path d="M12 21V9m0 0-4 4m4-4 4 4"/><path d="M4 3v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+};
+function svgIcon(name){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS.info}</svg>`; }
+
+let currentView="dashboard";
+function renderSidebar(){
+  const nav=document.getElementById("sidebarNav");
+  nav.innerHTML="";
+  MENU.forEach(g=>{
+    const label=document.createElement("div"); label.className="nav-group-label"; label.textContent=g.group;
+    nav.appendChild(label);
+    g.items.forEach(it=>{
+      const a=document.createElement("a");
+      a.href="#"; a.className="nav-item"+(it.id===currentView?" active":"");
+      a.dataset.view=it.id;
+      a.innerHTML=svgIcon(it.icon)+`<span class="nav-label">${it.label}</span>`;
+      a.onclick=(e)=>{ e.preventDefault(); navigateTo(it.id); if(window.innerWidth<=900) closeSidebarMobile(); };
+      nav.appendChild(a);
+    });
+  });
+}
+function closeSidebarMobile(){ document.getElementById("sidebar").classList.remove("mobile-open"); document.getElementById("overlay").classList.remove("show"); }
+document.getElementById("btnHamburger").onclick=()=>{
+  if(window.innerWidth<=900){
+    document.getElementById("sidebar").classList.toggle("mobile-open");
+    document.getElementById("overlay").classList.toggle("show");
+  }else{
+    const sb=document.getElementById("sidebar"); const main=document.getElementById("mainWrap");
+    sb.classList.toggle("collapsed"); main.classList.toggle("collapsed");
+    localStorage.setItem(SIDEBAR_KEY, sb.classList.contains("collapsed")?"1":"0");
+  }
+};
+document.getElementById("overlay").onclick=closeSidebarMobile;
+
+function navigateTo(view){
+  currentView=view;
+  renderSidebar();
+  renderView(view);
+  window.scrollTo(0,0);
+}
+
+/* Tema */
+function applyTheme(t){ document.documentElement.setAttribute("data-theme",t); const cfg=dbGetObj("configuracoes",{}); cfg.tema=t; dbSet("configuracoes",cfg); }
+document.getElementById("btnThemeToggle").onclick=()=>{
+  const cur=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";
+  applyTheme(cur);
+};
+
+/* =====================================================================
+   SECTION F — CONFIGURAÇÕES DE MÓDULOS (CRUD GENÉRICO)
+===================================================================== */
+// Cada módulo define: key, título, colunas de tabela, campos de formulário, funções auxiliares.
+function categoriasList(){ return dbGet("categorias"); }
+function fornecedoresList(){ return dbGet("fornecedores"); }
+function produtosList(){ return dbGet("produtos"); }
+function localizacoesList(){ return dbGet("localizacoes"); }
+function lotesList(){ return dbGet("lotes"); }
+function nomeProduto(id){ const p=produtosList().find(x=>x.id==id); return p?p.nome+" ("+p.codigo+")":"-"; }
+function nomeCategoria(id){ const c=categoriasList().find(x=>x.id==id); return c?c.nome:"-"; }
+function nomeFornecedor(id){ const f=fornecedoresList().find(x=>x.id==id); return f?f.nomeFantasia:"-"; }
+function nomeLocalizacao(id){ const l=localizacoesList().find(x=>x.id==id); return l?l.codigo:"-"; }
+function opcoes(list,valueField,labelField,selected){
+  return list.map(i=>`<option value="${i[valueField]}" ${i[valueField]==selected?"selected":""}>${i[labelField]}</option>`).join("");
+}
+
+const MODULES = {
+  categorias:{
+    title:"Categorias", icon:"tag",
+    cols:[["codigo","Código"],["nome","Nome"],["descricao","Descrição"],["status","Status"]],
+    fields:[
+      {name:"codigo",label:"Código",type:"text",req:true},
+      {name:"nome",label:"Nome",type:"text",req:true,full:true},
+      {name:"descricao",label:"Descrição",type:"textarea",full:true},
+      {name:"status",label:"Status",type:"select",options:["Ativo","Inativo"]},
+    ]
+  },
+  fornecedores:{
+    title:"Fornecedores", icon:"truck",
+    cols:[["nomeFantasia","Nome Fantasia"],["cnpj","CNPJ"],["contato","Contato"],["telefone","Telefone"],["status","Status"]],
+    fields:[
+      {name:"razaoSocial",label:"Razão Social",type:"text",req:true,full:true},
+      {name:"nomeFantasia",label:"Nome Fantasia",type:"text",req:true},
+      {name:"cnpj",label:"CNPJ",type:"text",req:true},
+      {name:"contato",label:"Contato",type:"text"},
+      {name:"telefone",label:"Telefone",type:"text"},
+      {name:"email",label:"E-mail",type:"text"},
+      {name:"site",label:"Site",type:"text"},
+      {name:"endereco",label:"Endereço",type:"text",full:true},
+      {name:"produtosFornecidos",label:"Produtos Fornecidos",type:"text",full:true},
+      {name:"observacoes",label:"Observações",type:"textarea",full:true},
+      {name:"status",label:"Status",type:"select",options:["Ativo","Inativo"]},
+    ]
+  },
+  localizacoes:{
+    title:"Localizações", icon:"pin",
+    cols:[["codigo","Código"],["deposito","Depósito"],["corredor","Corredor"],["rua","Rua"],["prateleira","Prateleira"],["nivel","Nível"]],
+    fields:[
+      {name:"codigo",label:"Código",type:"text",req:true},
+      {name:"deposito",label:"Depósito",type:"text",req:true},
+      {name:"corredor",label:"Corredor",type:"text"},
+      {name:"rua",label:"Rua",type:"text"},
+      {name:"prateleira",label:"Prateleira",type:"text"},
+      {name:"nivel",label:"Nível",type:"text"},
+      {name:"posicao",label:"Posição",type:"text"},
+    ]
+  },
+  produtos:{
+    title:"Produtos", icon:"box",
+    cols:[["codigo","Código"],["nome","Produto"],["categoriaId","Categoria",v=>nomeCategoria(v)],["estoqueAtual","Estoque"],["status","Status"]],
+    fields:[
+      {name:"codigo",label:"Código",type:"text",req:true,auto:true},
+      {name:"codigoBarras",label:"Código de Barras",type:"text"},
+      {name:"nome",label:"Produto",type:"text",req:true,full:true},
+      {name:"descricao",label:"Descrição",type:"textarea",full:true},
+      {name:"categoriaId",label:"Categoria",type:"select-dyn",source:()=>categoriasList(),vf:"id",lf:"nome"},
+      {name:"unidade",label:"Unidade",type:"select",options:["UN","CX","RL","KG","L","PC","PAR","M"]},
+      {name:"marca",label:"Marca",type:"text"},
+      {name:"fabricante",label:"Fabricante",type:"text"},
+      {name:"modelo",label:"Modelo",type:"text"},
+      {name:"localizacaoId",label:"Localização",type:"select-dyn",source:()=>localizacoesList(),vf:"id",lf:"codigo"},
+      {name:"estoqueMin",label:"Estoque Mínimo",type:"number",req:true},
+      {name:"estoqueMax",label:"Estoque Máximo",type:"number",req:true},
+      {name:"estoqueAtual",label:"Estoque Atual",type:"number",req:true},
+      {name:"valorCompra",label:"Valor de Compra",type:"number",step:"0.01"},
+      {name:"valorVenda",label:"Valor de Venda",type:"number",step:"0.01"},
+      {name:"ncm",label:"NCM",type:"text"},
+      {name:"observacoes",label:"Observações",type:"textarea",full:true},
+      {name:"status",label:"Status",type:"select",options:["Ativo","Inativo"]},
+    ]
+  },
+  lotes:{
+    title:"Lotes / Validade", icon:"cal",
+    cols:[["numeroLote","Lote"],["produtoId","Produto",v=>nomeProduto(v)],["dataValidade","Validade",v=>fmtDate(v)],["quantidade","Qtd"],["situacao","Situação"]],
+    fields:[
+      {name:"numeroLote",label:"Número do Lote",type:"text",req:true},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"fabricante",label:"Fabricante",type:"text"},
+      {name:"dataFabricacao",label:"Data de Fabricação",type:"date"},
+      {name:"dataValidade",label:"Data de Validade",type:"date",req:true},
+      {name:"quantidade",label:"Quantidade",type:"number",req:true},
+      {name:"localizacaoId",label:"Localização",type:"select-dyn",source:()=>localizacoesList(),vf:"id",lf:"codigo"},
+      {name:"situacao",label:"Situação",type:"select",options:["Regular","Próximo ao Vencimento","Vencido","Bloqueado"]},
+    ]
+  },
+  entradas:{
+    title:"Entrada de Produtos", icon:"in",
+    cols:[["numero","Número"],["data","Data",v=>fmtDate(v)],["produtoId","Produto",v=>nomeProduto(v)],["fornecedorId","Fornecedor",v=>nomeFornecedor(v)],["quantidade","Qtd"],["valorTotal","Total",v=>fmtMoney(v)]],
+    fields:[
+      {name:"numero",label:"Número",type:"text",auto:true},
+      {name:"data",label:"Data",type:"date",req:true},
+      {name:"fornecedorId",label:"Fornecedor",type:"select-dyn",source:()=>fornecedoresList(),vf:"id",lf:"nomeFantasia",req:true},
+      {name:"notaFiscal",label:"Nota Fiscal",type:"text"},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"quantidade",label:"Quantidade",type:"number",req:true},
+      {name:"valorUnitario",label:"Valor Unitário",type:"number",step:"0.01",req:true},
+      {name:"responsavel",label:"Responsável",type:"text",req:true},
+      {name:"observacoes",label:"Observações",type:"textarea",full:true},
+    ],
+    onSave:(rec)=>{
+      rec.valorTotal = Math.round((rec.quantidade*rec.valorUnitario)*100)/100;
+      const prods=produtosList(); const p=prods.find(x=>x.id==rec.produtoId);
+      if(p){ p.estoqueAtual = Number(p.estoqueAtual)+Number(rec.quantidade); dbSet("produtos",prods); }
+      logMovimentacao("Entrada",rec.produtoId,rec.quantidade,rec.responsavel,rec.data,nomeFornecedor(rec.fornecedorId),"Estoque","Recebimento de mercadoria");
+    }
+  },
+  saidas:{
+    title:"Saída de Produtos", icon:"out",
+    cols:[["numero","Número"],["data","Data",v=>fmtDate(v)],["produtoId","Produto",v=>nomeProduto(v)],["quantidade","Qtd"],["centroCusto","Centro de Custo"],["responsavel","Responsável"]],
+    fields:[
+      {name:"numero",label:"Número",type:"text",auto:true},
+      {name:"data",label:"Data",type:"date",req:true},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"quantidade",label:"Quantidade",type:"number",req:true},
+      {name:"centroCusto",label:"Centro de Custo",type:"select",options:["Produção","Manutenção","Administrativo","Almoxarifado","Qualidade","Logística"]},
+      {name:"destino",label:"Destino",type:"text"},
+      {name:"responsavel",label:"Responsável",type:"text",req:true},
+      {name:"motivo",label:"Motivo",type:"text",req:true,full:true},
+      {name:"observacoes",label:"Observações",type:"textarea",full:true},
+    ],
+    onSave:(rec)=>{
+      const prods=produtosList(); const p=prods.find(x=>x.id==rec.produtoId);
+      if(p){
+        if(Number(p.estoqueAtual) < Number(rec.quantidade)){ toast("Estoque insuficiente para esta saída — bloqueado.","error"); throw new Error("estoque negativo bloqueado"); }
+        p.estoqueAtual = Number(p.estoqueAtual)-Number(rec.quantidade); dbSet("produtos",prods);
+      }
+      logMovimentacao("Saída",rec.produtoId,rec.quantidade,rec.responsavel,rec.data,"Estoque",rec.destino||rec.centroCusto,rec.motivo);
+    }
+  },
+  transferencias:{
+    title:"Transferências", icon:"swap",
+    cols:[["numero","Número"],["data","Data",v=>fmtDate(v)],["produtoId","Produto",v=>nomeProduto(v)],["origemId","Origem",v=>nomeLocalizacao(v)],["destinoId","Destino",v=>nomeLocalizacao(v)],["quantidade","Qtd"]],
+    fields:[
+      {name:"numero",label:"Número",type:"text",auto:true},
+      {name:"data",label:"Data",type:"date",req:true},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"quantidade",label:"Quantidade",type:"number",req:true},
+      {name:"origemId",label:"Origem",type:"select-dyn",source:()=>localizacoesList(),vf:"id",lf:"codigo",req:true},
+      {name:"destinoId",label:"Destino",type:"select-dyn",source:()=>localizacoesList(),vf:"id",lf:"codigo",req:true},
+      {name:"responsavel",label:"Responsável",type:"text",req:true},
+      {name:"observacoes",label:"Observações",type:"textarea",full:true},
+    ],
+    onSave:(rec)=>{ logMovimentacao("Transferência",rec.produtoId,rec.quantidade,rec.responsavel,rec.data,nomeLocalizacao(rec.origemId),nomeLocalizacao(rec.destinoId),"Transferência entre localizações"); }
+  },
+  ajustes:{
+    title:"Ajustes de Estoque", icon:"tune",
+    cols:[["numero","Número"],["data","Data",v=>fmtDate(v)],["produtoId","Produto",v=>nomeProduto(v)],["tipo","Tipo"],["quantidade","Qtd"],["motivo","Motivo"]],
+    fields:[
+      {name:"numero",label:"Número",type:"text",auto:true},
+      {name:"data",label:"Data",type:"date",req:true},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"tipo",label:"Tipo",type:"select",options:["Entrada Manual","Saída Manual","Correção","Perda","Quebra","Vencimento","Consumo Interno"],req:true},
+      {name:"quantidade",label:"Quantidade (+/-)",type:"number",req:true},
+      {name:"motivo",label:"Motivo",type:"text",req:true,full:true},
+      {name:"responsavel",label:"Responsável",type:"text",req:true},
+    ],
+    onSave:(rec)=>{
+      const prods=produtosList(); const p=prods.find(x=>x.id==rec.produtoId);
+      if(p){ const novo=Number(p.estoqueAtual)+Number(rec.quantidade); p.estoqueAtual = Math.max(0,novo); dbSet("produtos",prods); }
+      logMovimentacao("Ajuste",rec.produtoId,rec.quantidade,rec.responsavel,rec.data,"-","-",rec.tipo);
+    }
+  },
+  inventarios:{
+    title:"Inventário", icon:"clip",
+    cols:[["numero","Número"],["data","Data",v=>fmtDate(v)],["tipo","Tipo"],["produtoId","Produto",v=>nomeProduto(v)],["qtdSistema","Sistema"],["qtdFisica","Física"],["diferenca","Diferença"]],
+    fields:[
+      {name:"numero",label:"Número",type:"text",auto:true},
+      {name:"data",label:"Data",type:"date",req:true},
+      {name:"tipo",label:"Tipo de Inventário",type:"select",options:["Geral","Rotativo","Categoria","Localização","Lote"]},
+      {name:"produtoId",label:"Produto",type:"select-dyn",source:()=>produtosList(),vf:"id",lf:"nome",req:true},
+      {name:"qtdSistema",label:"Quantidade Sistema",type:"number",req:true},
+      {name:"qtdFisica",label:"Quantidade Física",type:"number",req:true},
+      {name:"responsavel",label:"Responsável",type:"text",req:true},
+    ],
+    onSave:(rec)=>{
+      rec.diferenca = Number(rec.qtdFisica)-Number(rec.qtdSistema);
+      if(rec.diferenca!==0){
+        const prods=produtosList(); const p=prods.find(x=>x.id==rec.produtoId);
+        if(p){ p.estoqueAtual = Number(rec.qtdFisica); dbSet("produtos",prods); }
+      }
+      logMovimentacao("Inventário",rec.produtoId,rec.diferenca,rec.responsavel,rec.data,"-","-","Ajuste por inventário");
+    }
+  },
+  usuarios:{
+    title:"Usuários", icon:"user",
+    cols:[["nome","Nome"],["usuario","Usuário"],["perfil","Perfil"],["status","Status"]],
+    fields:[
+      {name:"nome",label:"Nome Completo",type:"text",req:true,full:true},
+      {name:"usuario",label:"Usuário (login)",type:"text",req:true},
+      {name:"senha",label:"Senha",type:"text",req:true},
+      {name:"email",label:"E-mail",type:"text"},
+      {name:"perfil",label:"Perfil",type:"select",options:["Administrador","Almoxarife","Estoquista","Supervisor","Gerente","Auditor","Consulta"]},
+      {name:"status",label:"Status",type:"select",options:["Ativo","Inativo"]},
+    ]
+  },
+};
+
+function logMovimentacao(tipo,produtoId,quantidade,usuario,data,origem,destino,motivo){
+  const list=dbGet("movimentacoes");
+  list.unshift({id:nextId("movimentacoes"),tipo,produtoId,quantidade,usuario:usuario||(getSessionUser()?getSessionUser().usuario:"-"),data:data||todayISO(),hora:nowTime(),origem:origem||"-",destino:destino||"-",motivo:motivo||"-"});
+  dbSet("movimentacoes",list);
+}
+
+/* ---- Estado de tabela genérico (busca, ordenação, paginação) por módulo ---- */
+const tableState = {};
+function getTableState(mod){
+  if(!tableState[mod]) tableState[mod] = {search:"",sortCol:null,sortDir:1,page:1,pageSize:8};
+  return tableState[mod];
+}
+
+function renderCrudView(modKey){
+  const mod = MODULES[modKey];
+  const st = getTableState(modKey);
+  let data = dbGet(modKey).slice();
+  if(st.search){
+    const s=st.search.toLowerCase();
+    data = data.filter(r=> JSON.stringify(r).toLowerCase().includes(s));
+  }
+  if(st.sortCol){
+    data.sort((a,b)=>{
+      let va=a[st.sortCol], vb=b[st.sortCol];
+      if(typeof va==="number"&&typeof vb==="number") return (va-vb)*st.sortDir;
+      return String(va||"").localeCompare(String(vb||""))*st.sortDir;
+    });
+  } else {
+    data.sort((a,b)=>b.id-a.id);
+  }
+  const totalPages = Math.max(1,Math.ceil(data.length/st.pageSize));
+  st.page = Math.min(st.page,totalPages);
+  const pageData = data.slice((st.page-1)*st.pageSize, st.page*st.pageSize);
+
+  let html = `
+  <div class="breadcrumb">Início / ${mod.title}</div>
+  <div class="page-title"><span>${svgIconInline(mod.icon)} ${mod.title}</span>
+    <div class="actions">
+      <button class="btn btn-outline btn-sm" onclick="exportModuleCSV('${modKey}')">Exportar CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir</button>
+      <button class="btn btn-primary btn-sm" onclick="openCrudForm('${modKey}',null)">+ Novo</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <input type="text" placeholder="Pesquisar..." value="${st.search}" oninput="tableState['${modKey}'].search=this.value;tableState['${modKey}'].page=1;renderView('${modKey}')">
+      <span class="text-muted" style="font-size:12.5px">${data.length} registro(s)</span>
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead><tr>`;
+  mod.cols.forEach(c=>{ html+=`<th onclick="sortCol('${modKey}','${c[0]}')">${c[1]} ${st.sortCol===c[0]?(st.sortDir===1?'▲':'▼'):''}</th>`; });
+  html += `<th style="text-align:right">Ações</th></tr></thead><tbody>`;
+  if(pageData.length===0){
+    html += `<tr><td colspan="${mod.cols.length+1}"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg><div>Nenhum registro encontrado</div></div></td></tr>`;
+  }
+  pageData.forEach(r=>{
+    html += "<tr>";
+    mod.cols.forEach(c=>{
+      let val = c[2] ? c[2](r[c[0]]) : r[c[0]];
+      if(c[0]==="status") val = badgeStatus(val);
+      if(c[0]==="situacao") val = badgeSituacao(val);
+      html += `<td>${val!==undefined?val:"-"}</td>`;
+    });
+    html += `<td><div class="row-actions" style="justify-content:flex-end">
+      <button class="icon-sm" title="Visualizar" onclick="viewCrudRecord('${modKey}',${r.id})">${svgSmallEye()}</button>
+      <button class="icon-sm" title="Editar" onclick="openCrudForm('${modKey}',${r.id})">${svgSmallEdit()}</button>
+      <button class="icon-sm" title="Excluir" onclick="deleteCrudRecord('${modKey}',${r.id})">${svgSmallTrash()}</button>
+    </div></td></tr>`;
+  });
+  html += `</tbody></table>
+    <div class="pagination">
+      <span>Página ${st.page} de ${totalPages}</span>
+      <div class="pg-btns">
+        <button class="btn btn-outline btn-sm" ${st.page<=1?"disabled":""} onclick="tableState['${modKey}'].page--;renderView('${modKey}')">Anterior</button>
+        <button class="btn btn-outline btn-sm" ${st.page>=totalPages?"disabled":""} onclick="tableState['${modKey}'].page++;renderView('${modKey}')">Próxima</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("viewContainer").innerHTML = html;
+}
+function svgIconInline(name){ return svgIcon(name).replace('viewBox="0 0 24 24"','viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px;margin-right:4px"'); }
+function svgSmallEye(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>'; }
+function svgSmallEdit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'; }
+function svgSmallTrash(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>'; }
+function badgeStatus(v){ if(v==="Ativo") return `<span class="badge badge-success">Ativo</span>`; if(v==="Inativo") return `<span class="badge badge-muted">Inativo</span>`; return v; }
+function badgeSituacao(v){
+  if(v==="Vencido") return `<span class="badge badge-danger">Vencido</span>`;
+  if(v==="Próximo ao Vencimento") return `<span class="badge badge-warning">Próximo ao Vencimento</span>`;
+  if(v==="Regular") return `<span class="badge badge-success">Regular</span>`;
+  return `<span class="badge badge-muted">${v}</span>`;
+}
+function sortCol(mod,col){ const st=getTableState(mod); if(st.sortCol===col){ st.sortDir*=-1; } else { st.sortCol=col; st.sortDir=1; } renderView(mod); }
+
+function buildFieldHtml(f,val){
+  const req = f.req?"required":"";
+  const value = val!==undefined&&val!==null?val:"";
+  if(f.type==="select"){
+    return `<select name="${f.name}" ${req}>${f.options.map(o=>`<option ${o===value?"selected":""}>${o}</option>`).join("")}</select>`;
+  }
+  if(f.type==="select-dyn"){
+    const list=f.source();
+    return `<select name="${f.name}" ${req}><option value="">Selecione...</option>${opcoes(list,f.vf,f.lf,value)}</select>`;
+  }
+  if(f.type==="textarea"){
+    return `<textarea name="${f.name}" rows="3">${value}</textarea>`;
+  }
+  return `<input type="${f.type}" name="${f.name}" value="${value}" ${req} ${f.step?`step="${f.step}"`:""}>`;
+}
+
+function openCrudForm(modKey,id){
+  const mod = MODULES[modKey];
+  const isEdit = !!id;
+  const rec = isEdit ? dbGet(modKey).find(r=>r.id===id) : {};
+  let html = `<form id="crudForm" class="form-grid">`;
+  mod.fields.forEach(f=>{
+    let val = rec[f.name];
+    if(f.auto && !isEdit) val = "(gerado automaticamente)";
+    html += `<div class="field ${f.full?"full":""}"><label>${f.label}</label>${buildFieldHtml(f, isEdit?rec[f.name]:(f.type==="date"?todayISO():""))}</div>`;
+  });
+  html += `</form>`;
+  openModal((isEdit?"Editar":"Novo")+" — "+mod.title, html, [
+    {label:"Cancelar",cls:"btn-secondary",action:closeModal},
+    {label:"Salvar",cls:"btn-primary",action:()=>saveCrudForm(modKey,id)}
+  ],"modal-lg");
+}
+
+function saveCrudForm(modKey,id){
+  const mod = MODULES[modKey];
+  const form = document.getElementById("crudForm");
+  const fd = new FormData(form);
+  const rec = id ? dbGet(modKey).find(r=>r.id===id) : {};
+  mod.fields.forEach(f=>{
+    let v = fd.get(f.name);
+    if(f.type==="number") v = v===""?0:Number(v);
+    if(!f.auto || id) rec[f.name]=v;
+  });
+  let list = dbGet(modKey);
+  try{
+    if(!id){
+      rec.id = nextId(modKey);
+      if(mod.fields.find(x=>x.name==="codigo"&&x.auto)) rec.codigo = "PRD-"+pad(rec.id,4);
+      if(mod.fields.find(x=>x.name==="numero"&&x.auto)) rec.numero = modKey.slice(0,3).toUpperCase()+"-"+pad(new Date().getFullYear(),4)+pad(rec.id,4);
+      if(mod.onSave) mod.onSave(rec);
+      list.push(rec);
+      registrarAuditoria("Inclusão",mod.title);
+    } else {
+      const idx = list.findIndex(r=>r.id===id);
+      if(mod.onSave && ["entradas","saidas","transferencias","ajustes","inventarios"].includes(modKey)){
+        // Para movimentações, não reexecuta o efeito de estoque na edição simples para evitar duplicidade — apenas atualiza os dados cadastrais.
+      }
+      list[idx] = rec;
+      registrarAuditoria("Alteração",mod.title);
+    }
+  }catch(err){
+    return; // erro já reportado via toast (ex.: estoque negativo bloqueado)
+  }
+  dbSet(modKey,list);
+  closeModal();
+  toast(id?"Registro atualizado com sucesso.":"Registro criado com sucesso.");
+  renderView(modKey);
+}
+
+function viewCrudRecord(modKey,id){
+  const mod=MODULES[modKey];
+  const rec=dbGet(modKey).find(r=>r.id===id);
+  if(!rec) return;
+  let html = `<div class="form-grid">`;
+  mod.fields.forEach(f=>{
+    let val = rec[f.name];
+    if(f.type==="select-dyn") val = f.lf==="nome"?nomeFieldLookup(f,val):val;
+    html += `<div class="field ${f.full?"full":""}"><label>${f.label}</label><div style="padding:9px 0;font-weight:600">${val!==undefined&&val!==""?val:"-"}</div></div>`;
+  });
+  html += `</div>`;
+  openModal("Visualizar — "+mod.title, html, [{label:"Fechar",cls:"btn-secondary",action:closeModal}],"modal-lg");
+}
+function nomeFieldLookup(f,val){ const item=f.source().find(x=>x[f.vf]==val); return item?item[f.lf]:val; }
+
+function deleteCrudRecord(modKey,id){
+  confirmModal("Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.",()=>{
+    let list = dbGet(modKey).filter(r=>r.id!==id);
+    dbSet(modKey,list);
+    registrarAuditoria("Exclusão",MODULES[modKey].title);
+    toast("Registro excluído com sucesso.");
+    renderView(modKey);
+  });
+}
+
+function exportModuleCSV(modKey){
+  const mod=MODULES[modKey];
+  const data=dbGet(modKey);
+  if(!data.length){ toast("Não há dados para exportar.","warning"); return; }
+  const headers = Object.keys(data[0]);
+  let csv = headers.join(";")+"\n";
+  data.forEach(r=>{ csv += headers.map(h=>String(r[h]!==undefined?r[h]:"").replace(/;/g,",")).join(";")+"\n"; });
+  downloadFile(csv, modKey+"-"+todayISO()+".csv","text/csv");
+  registrarAuditoria("Exportação",mod.title);
+}
+function downloadFile(content,filename,type){
+  const blob = new Blob([content],{type});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* =====================================================================
+   SECTION G — DASHBOARD
+===================================================================== */
+function renderDashboard(){
+  const produtos=produtosList(), entradas=dbGet("entradas"), saidas=dbGet("saidas"), transferencias=dbGet("transferencias");
+  const lotes=lotesList(), inventarios=dbGet("inventarios"), movimentacoes=dbGet("movimentacoes");
+  const mesAtual = new Date().getMonth();
+  const entradasMes = entradas.filter(e=>new Date(e.data+"T00:00:00").getMonth()===mesAtual).length;
+  const saidasMes = saidas.filter(s=>new Date(s.data+"T00:00:00").getMonth()===mesAtual).length;
+  const abaixoMin = produtos.filter(p=>Number(p.estoqueAtual)<Number(p.estoqueMin));
+  const vencendo = lotes.filter(l=>{ const d=daysBetween(todayISO(),l.dataValidade); return d>=0 && d<=90; });
+  const vencidos = lotes.filter(l=>daysBetween(todayISO(),l.dataValidade)<0);
+  const valorTotalEstoque = produtos.reduce((s,p)=>s+Number(p.estoqueAtual)*Number(p.valorMedio||p.valorCompra||0),0);
+  const invPendentes = inventarios.filter(i=>i.diferenca!==0).length;
+
+  const kpis = [
+    ["Total de Produtos",produtos.length,"box","primary"],
+    ["Estoque Atual (unid.)",produtos.reduce((s,p)=>s+Number(p.estoqueAtual),0),"grid","info"],
+    ["Entradas do Mês",entradasMes,"in","success"],
+    ["Saídas do Mês",saidasMes,"out","danger"],
+    ["Transferências",transferencias.length,"swap","info"],
+    ["Abaixo do Mínimo",abaixoMin.length,"tune","warning"],
+    ["Vencendo (90d)",vencendo.length,"cal","warning"],
+    ["Produtos Vencidos",vencidos.length,"shield","danger"],
+    ["Valor em Estoque",fmtMoney(valorTotalEstoque),"chart","success"],
+    ["Inventários c/ Diferença",invPendentes,"clip","info"],
+  ];
+  let kpiHtml = `<div class="grid kpi-grid">`;
+  kpis.forEach(k=>{
+    kpiHtml += `<div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-icon" style="background:var(--${k[3]}-light);color:var(--${k[3]})">${svgIcon(k[2])}</div></div>
+      <div class="kpi-value">${k[1]}</div><div class="kpi-label">${k[0]}</div>
+    </div>`;
+  });
+  kpiHtml += `</div>`;
+
+  // Ranking produtos mais movimentados
+  const rank = {};
+  movimentacoes.forEach(m=>{ rank[m.produtoId] = (rank[m.produtoId]||0)+Math.abs(Number(m.quantidade)); });
+  const ranked = Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxRank = ranked.length?ranked[0][1]:1;
+  let rankHtml = ranked.map(([pid,qty])=>{
+    const nome = nomeProduto(pid);
+    const pct = Math.round((qty/maxRank)*100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>${nome}</span><strong>${qty}</strong></div>
+      <div style="background:var(--bg);border-radius:6px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--primary)"></div></div>
+    </div>`;
+  }).join("") || `<div class="text-muted">Sem movimentações registradas.</div>`;
+
+  // Últimas movimentações
+  let movHtml = movimentacoes.slice(0,6).map(m=>`
+    <div class="alert-item"><div class="alert-dot" style="background:var(--primary)"></div>
+      <div class="alert-txt"><strong>${m.tipo} — ${nomeProduto(m.produtoId)}</strong><span>${fmtDate(m.data)} • Qtd ${m.quantidade} • ${m.usuario}</span></div>
+    </div>`).join("") || `<div class="text-muted">Nenhuma movimentação.</div>`;
+
+  // Alertas
+  let alertHtml = "";
+  abaixoMin.slice(0,4).forEach(p=>alertHtml+=`<div class="alert-item"><div class="alert-dot" style="background:var(--warning)"></div><div class="alert-txt"><strong>${p.nome}</strong><span>Estoque atual ${p.estoqueAtual} abaixo do mínimo ${p.estoqueMin}</span></div></div>`);
+  vencidos.slice(0,4).forEach(l=>alertHtml+=`<div class="alert-item"><div class="alert-dot" style="background:var(--danger)"></div><div class="alert-txt"><strong>Lote ${l.numeroLote} vencido</strong><span>${nomeProduto(l.produtoId)} • Venceu em ${fmtDate(l.dataValidade)}</span></div></div>`);
+  if(!alertHtml) alertHtml = `<div class="text-muted">Nenhum alerta no momento.</div>`;
+
+  // Gráfico SVG simples: entradas x saídas últimos 7 registros
+  const barData = [];
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const iso=d.toISOString().slice(0,10);
+    barData.push({label:d.toLocaleDateString('pt-BR',{weekday:'short'}),
+      ent: entradas.filter(e=>e.data===iso).length, sai: saidas.filter(s=>s.data===iso).length}); }
+  const maxBar = Math.max(1,...barData.map(b=>Math.max(b.ent,b.sai)));
+  let svgChart = `<svg viewBox="0 0 350 140" width="100%" height="150">`;
+  barData.forEach((b,i)=>{
+    const x=i*50+15;
+    const hE = (b.ent/maxBar)*90, hS=(b.sai/maxBar)*90;
+    svgChart += `<rect x="${x}" y="${110-hE}" width="14" height="${hE}" fill="var(--primary)" rx="2"/>`;
+    svgChart += `<rect x="${x+16}" y="${110-hS}" width="14" height="${hS}" fill="var(--danger)" rx="2"/>`;
+    svgChart += `<text x="${x+14}" y="128" font-size="9" fill="currentColor" text-anchor="middle" opacity=".6">${b.label}</text>`;
+  });
+  svgChart += `</svg><div style="display:flex;gap:14px;font-size:11.5px;margin-top:6px"><span><span style="display:inline-block;width:9px;height:9px;background:var(--primary);border-radius:2px;margin-right:5px"></span>Entradas</span><span><span style="display:inline-block;width:9px;height:9px;background:var(--danger);border-radius:2px;margin-right:5px"></span>Saídas</span></div>`;
+
+  document.getElementById("viewContainer").innerHTML = `
+    <div class="breadcrumb">Início / Dashboard</div>
+    <div class="page-title">Dashboard Executivo</div>
+    ${kpiHtml}
+    <div class="grid dash-grid mt16">
+      <div class="panel"><div class="panel-head"><h3>Entradas x Saídas (últimos 7 dias)</h3></div>${svgChart}</div>
+      <div class="panel"><div class="panel-head"><h3>Alertas</h3></div>${alertHtml}</div>
+    </div>
+    <div class="grid dash-grid2 mt16">
+      <div class="panel"><div class="panel-head"><h3>Últimas Movimentações</h3></div>${movHtml}</div>
+      <div class="panel"><div class="panel-head"><h3>Ranking — Produtos Mais Movimentados</h3></div>${rankHtml}</div>
+    </div>
+  `;
+}
+
+/* =====================================================================
+   SECTION H — MOVIMENTAÇÕES / AUDITORIA (visualização simples)
+===================================================================== */
+function renderMovimentacoes(){
+  const st=getTableState("movimentacoes");
+  let data = dbGet("movimentacoes").slice();
+  if(st.search){ const s=st.search.toLowerCase(); data=data.filter(r=>JSON.stringify(r).toLowerCase().includes(s)); }
+  data.sort((a,b)=>b.id-a.id);
+  let html = `<div class="breadcrumb">Início / Movimentações</div>
+  <div class="page-title">Movimentações</div>
+  <div class="toolbar"><div class="toolbar-left">
+    <input type="text" placeholder="Pesquisar..." value="${st.search}" oninput="tableState['movimentacoes'].search=this.value;renderView('movimentacoes')">
+    <span class="text-muted" style="font-size:12.5px">${data.length} registro(s)</span>
+  </div><div class="actions"><button class="btn btn-outline btn-sm" onclick="exportModuleCSV('movimentacoes')">Exportar CSV</button></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Produto</th><th>Qtd</th><th>Usuário</th><th>Data</th><th>Hora</th><th>Origem</th><th>Destino</th><th>Motivo</th></tr></thead><tbody>`;
+  data.forEach(m=>{
+    html+=`<tr><td>${tipoBadge(m.tipo)}</td><td>${nomeProduto(m.produtoId)}</td><td>${m.quantidade}</td><td>${m.usuario}</td><td>${fmtDate(m.data)}</td><td>${m.hora}</td><td>${m.origem}</td><td>${m.destino}</td><td>${m.motivo}</td></tr>`;
+  });
+  if(!data.length) html+=`<tr><td colspan="9"><div class="empty-state">Nenhuma movimentação registrada</div></td></tr>`;
+  html+=`</tbody></table></div>`;
+  document.getElementById("viewContainer").innerHTML = html;
+}
+function tipoBadge(t){
+  const map={Entrada:"success",Saída:"danger",Transferência:"info",Ajuste:"warning",Inventário:"muted"};
+  return `<span class="badge badge-${map[t]||'muted'}">${t}</span>`;
+}
+
+function renderAuditoria(){
+  const st=getTableState("auditoria");
+  let data=dbGet("auditoria").slice();
+  if(st.search){ const s=st.search.toLowerCase(); data=data.filter(r=>JSON.stringify(r).toLowerCase().includes(s)); }
+  data.sort((a,b)=>b.id-a.id);
+  let html = `<div class="breadcrumb">Início / Auditoria</div>
+  <div class="page-title">Auditoria</div>
+  <div class="toolbar"><div class="toolbar-left">
+    <input type="text" placeholder="Pesquisar..." value="${st.search}" oninput="tableState['auditoria'].search=this.value;renderView('auditoria')">
+    <span class="text-muted" style="font-size:12.5px">${data.length} registro(s)</span>
+  </div><div class="actions"><button class="btn btn-outline btn-sm" onclick="exportModuleCSV('auditoria')">Exportar CSV</button></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Data</th><th>Hora</th><th>Ação</th><th>Tela</th><th>Navegador</th></tr></thead><tbody>`;
+  data.forEach(a=>{ html+=`<tr><td>${a.usuario}</td><td>${fmtDate(a.data)}</td><td>${a.hora}</td><td>${a.acao}</td><td>${a.tela}</td><td>${a.navegador}</td></tr>`; });
+  if(!data.length) html+=`<tr><td colspan="6"><div class="empty-state">Nenhum registro de auditoria</div></td></tr>`;
+  html+=`</tbody></table></div>`;
+  document.getElementById("viewContainer").innerHTML = html;
+}
+
+/* =====================================================================
+   SECTION I — RELATÓRIOS
+===================================================================== */
+const REPORTS = [
+  ["estoque_atual","Estoque Atual"],["abaixo_minimo","Produtos Abaixo do Mínimo"],["sem_movimentacao","Produtos sem Movimentação"],
+  ["entradas","Entradas"],["saidas","Saídas"],["transferencias","Transferências"],["inventarios","Inventários"],
+  ["por_categoria","Produtos por Categoria"],["por_fornecedor","Produtos por Fornecedor"],["por_localizacao","Produtos por Localização"],
+  ["vencidos","Produtos Vencidos"],["proximos_validade","Produtos Próximos da Validade"],["curva_abc","Curva ABC"],
+  ["giro_estoque","Giro de Estoque"],["valor_financeiro","Valor Financeiro do Estoque"]
+];
+function renderRelatorios(){
+  let html = `<div class="breadcrumb">Início / Relatórios</div><div class="page-title">Relatórios</div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));margin-bottom:18px">`;
+  REPORTS.forEach(r=>{
+    html += `<div class="panel" style="cursor:pointer" onclick="showReport('${r[0]}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="kpi-icon" style="background:var(--primary-light);color:var(--primary)">${svgIcon('chart')}</div>
+        <div><strong style="font-size:13px">${r[1]}</strong></div>
+      </div></div>`;
+  });
+  html += `</div><div id="reportOutput"></div>`;
+  document.getElementById("viewContainer").innerHTML = html;
+}
+function showReport(key){
+  const produtos=produtosList(), lotes=lotesList();
+  let rows=[], cols=[], title="";
+  if(key==="estoque_atual"){ title="Estoque Atual"; cols=["Código","Produto","Categoria","Estoque","Mínimo","Máximo","Status"];
+    rows=produtos.map(p=>[p.codigo,p.nome,nomeCategoria(p.categoriaId),p.estoqueAtual,p.estoqueMin,p.estoqueMax,p.status]); }
+  else if(key==="abaixo_minimo"){ title="Produtos Abaixo do Mínimo"; cols=["Código","Produto","Estoque","Mínimo"];
+    rows=produtos.filter(p=>Number(p.estoqueAtual)<Number(p.estoqueMin)).map(p=>[p.codigo,p.nome,p.estoqueAtual,p.estoqueMin]); }
+  else if(key==="sem_movimentacao"){ title="Produtos sem Movimentação"; cols=["Código","Produto"];
+    const movIds=new Set(dbGet("movimentacoes").map(m=>String(m.produtoId)));
+    rows=produtos.filter(p=>!movIds.has(String(p.id))).map(p=>[p.codigo,p.nome]); }
+  else if(key==="entradas"){ title="Entradas"; cols=["Número","Data","Produto","Fornecedor","Qtd","Total"];
+    rows=dbGet("entradas").map(e=>[e.numero,fmtDate(e.data),nomeProduto(e.produtoId),nomeFornecedor(e.fornecedorId),e.quantidade,fmtMoney(e.valorTotal)]); }
+  else if(key==="saidas"){ title="Saídas"; cols=["Número","Data","Produto","Qtd","Centro de Custo","Responsável"];
+    rows=dbGet("saidas").map(s=>[s.numero,fmtDate(s.data),nomeProduto(s.produtoId),s.quantidade,s.centroCusto,s.responsavel]); }
+  else if(key==="transferencias"){ title="Transferências"; cols=["Número","Data","Produto","Origem","Destino","Qtd"];
+    rows=dbGet("transferencias").map(t=>[t.numero,fmtDate(t.data),nomeProduto(t.produtoId),nomeLocalizacao(t.origemId),nomeLocalizacao(t.destinoId),t.quantidade]); }
+  else if(key==="inventarios"){ title="Inventários"; cols=["Número","Data","Tipo","Produto","Sistema","Física","Diferença"];
+    rows=dbGet("inventarios").map(i=>[i.numero,fmtDate(i.data),i.tipo,nomeProduto(i.produtoId),i.qtdSistema,i.qtdFisica,i.diferenca]); }
+  else if(key==="por_categoria"){ title="Produtos por Categoria"; cols=["Categoria","Qtd. Produtos"];
+    const map={}; produtos.forEach(p=>{ const c=nomeCategoria(p.categoriaId); map[c]=(map[c]||0)+1; });
+    rows=Object.entries(map).map(([k,v])=>[k,v]); }
+  else if(key==="por_fornecedor"){ title="Produtos por Fornecedor (via Entradas)"; cols=["Fornecedor","Qtd. Entradas"];
+    const map={}; dbGet("entradas").forEach(e=>{ const f=nomeFornecedor(e.fornecedorId); map[f]=(map[f]||0)+1; });
+    rows=Object.entries(map).map(([k,v])=>[k,v]); }
+  else if(key==="por_localizacao"){ title="Produtos por Localização"; cols=["Localização","Qtd. Produtos"];
+    const map={}; produtos.forEach(p=>{ const l=nomeLocalizacao(p.localizacaoId); map[l]=(map[l]||0)+1; });
+    rows=Object.entries(map).map(([k,v])=>[k,v]); }
+  else if(key==="vencidos"){ title="Produtos Vencidos"; cols=["Lote","Produto","Validade"];
+    rows=lotes.filter(l=>daysBetween(todayISO(),l.dataValidade)<0).map(l=>[l.numeroLote,nomeProduto(l.produtoId),fmtDate(l.dataValidade)]); }
+  else if(key==="proximos_validade"){ title="Produtos Próximos da Validade (90 dias)"; cols=["Lote","Produto","Validade","Dias Restantes"];
+    rows=lotes.filter(l=>{const d=daysBetween(todayISO(),l.dataValidade);return d>=0&&d<=90;}).map(l=>[l.numeroLote,nomeProduto(l.produtoId),fmtDate(l.dataValidade),daysBetween(todayISO(),l.dataValidade)]); }
+  else if(key==="curva_abc"){ title="Curva ABC (por valor em estoque)"; cols=["Produto","Valor em Estoque","Classe"];
+    const vals = produtos.map(p=>({nome:p.nome,valor:Number(p.estoqueAtual)*Number(p.valorMedio||p.valorCompra||0)})).sort((a,b)=>b.valor-a.valor);
+    const total=vals.reduce((s,v)=>s+v.valor,0)||1; let acc=0;
+    rows = vals.map(v=>{ acc+=v.valor; const pct=acc/total; const classe = pct<=0.8?"A":(pct<=0.95?"B":"C"); return [v.nome,fmtMoney(v.valor),classe]; }); }
+  else if(key==="giro_estoque"){ title="Giro de Estoque (saídas / estoque atual)"; cols=["Produto","Saídas Totais","Estoque Atual","Giro"];
+    rows = produtos.map(p=>{ const said=dbGet("saidas").filter(s=>s.produtoId==p.id).reduce((s,x)=>s+Number(x.quantidade),0);
+      const giro = p.estoqueAtual>0?(said/p.estoqueAtual).toFixed(2):"-"; return [p.nome,said,p.estoqueAtual,giro]; }); }
+  else if(key==="valor_financeiro"){ title="Valor Financeiro do Estoque"; cols=["Produto","Estoque","Valor Unitário","Valor Total"];
+    rows = produtos.map(p=>[p.nome,p.estoqueAtual,fmtMoney(p.valorMedio||p.valorCompra||0),fmtMoney(Number(p.estoqueAtual)*Number(p.valorMedio||p.valorCompra||0))]); }
+
+  let html = `<div class="panel mt16"><div class="panel-head"><h3>${title}</h3>
+    <div class="actions">
+      <button class="btn btn-outline btn-sm" onclick="exportReportCSV('${key}')">CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="exportReportJSON('${key}')">JSON</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">PDF / Imprimir</button>
+    </div></div>
+    <div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+  rows.forEach(r=>{ html+=`<tr>${r.map(v=>`<td>${v}</td>`).join("")}</tr>`; });
+  if(!rows.length) html+=`<tr><td colspan="${cols.length}"><div class="empty-state">Sem dados para este relatório</div></td></tr>`;
+  html += `</tbody></table></div></div>`;
+  document.getElementById("reportOutput").innerHTML = html;
+  window._lastReport = {key,title,cols,rows};
+  registrarAuditoria("Relatório",title);
+}
+function exportReportCSV(key){
+  const r=window._lastReport; if(!r) return;
+  let csv = r.cols.join(";")+"\n";
+  r.rows.forEach(row=>{ csv+=row.join(";")+"\n"; });
+  downloadFile(csv, key+"-"+todayISO()+".csv","text/csv");
+}
+function exportReportJSON(key){
+  const r=window._lastReport; if(!r) return;
+  downloadFile(JSON.stringify(r.rows.map(row=>{ const o={}; r.cols.forEach((c,i)=>o[c]=row[i]); return o; }),null,2), key+"-"+todayISO()+".json","application/json");
+}
+
+/* =====================================================================
+   SECTION J — CONFIGURAÇÕES / BACKUP / RESTAURAR / SOBRE
+===================================================================== */
+function renderConfiguracoes(){
+  const cfg = dbGetObj("configuracoes",{});
+  document.getElementById("viewContainer").innerHTML = `
+    <div class="breadcrumb">Início / Configurações</div>
+    <div class="page-title">Configurações</div>
+    <div class="panel" style="max-width:640px">
+      <div class="form-grid">
+        <div class="field full"><label>Nome da Empresa</label><input type="text" id="cfgNome" value="${cfg.nomeEmpresa||""}"></div>
+        <div class="field"><label>Tema</label><select id="cfgTema"><option value="light" ${cfg.tema==='light'?'selected':''}>Claro</option><option value="dark" ${cfg.tema==='dark'?'selected':''}>Escuro</option></select></div>
+        <div class="field"><label>Idioma</label><select id="cfgIdioma"><option value="pt-BR" selected>Português (Brasil)</option></select></div>
+        <div class="field"><label>Moeda</label><select id="cfgMoeda"><option value="BRL" ${cfg.moeda==='BRL'?'selected':''}>Real (R$)</option><option value="USD" ${cfg.moeda==='USD'?'selected':''}>Dólar (US$)</option><option value="EUR" ${cfg.moeda==='EUR'?'selected':''}>Euro (€)</option></select></div>
+      </div>
+      <button class="btn btn-primary mt16" onclick="salvarConfiguracoes()">Salvar Configurações</button>
+    </div>
+
+    <div class="panel mt16" style="max-width:640px">
+      <h3 style="font-size:14.5px;margin-bottom:10px">Dados de Demonstração</h3>
+      <p class="text-muted" style="font-size:12.8px;margin-bottom:12px">Restaure os 15 registros de exemplo em cada módulo, ou limpe todos os dados operacionais mantendo usuário administrador e configurações.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="restaurarDemo()">Restaurar Dados de Demonstração</button>
+        <button class="btn btn-danger" onclick="limparTudo()">Limpar Todos os Dados</button>
+      </div>
+    </div>
+  `;
+}
+function salvarConfiguracoes(){
+  const cfg = dbGetObj("configuracoes",{});
+  cfg.nomeEmpresa = document.getElementById("cfgNome").value;
+  cfg.tema = document.getElementById("cfgTema").value;
+  cfg.idioma = document.getElementById("cfgIdioma").value;
+  cfg.moeda = document.getElementById("cfgMoeda").value;
+  dbSet("configuracoes",cfg);
+  applyTheme(cfg.tema);
+  document.getElementById("brandName").textContent = cfg.nomeEmpresa || "SysSec WMS";
+  registrarAuditoria("Alteração","Configurações");
+  toast("Configurações salvas com sucesso.");
+}
+function restaurarDemo(){
+  confirmModal("Isso apagará todos os dados atuais e recriará os 15 registros de demonstração em cada módulo. Deseja continuar?",()=>{
+    gerarSeed();
+    ensureAdminUser();
+    registrarAuditoria("Restauração","Configurações");
+    toast("Dados de demonstração restaurados com sucesso.");
+    navigateTo("dashboard");
+  });
+}
+function limparTudo(){
+  confirmModal("Isso removerá todos os registros operacionais (produtos, movimentações, cadastros, etc). Usuário administrador, configurações e estrutura serão mantidos. Deseja continuar?",()=>{
+    const manter = ["usuarios","configuracoes"];
+    DB_KEYS.forEach(k=>{ if(!manter.includes(k)) dbSet(k,[]); });
+    const users = dbGet("usuarios").filter(u=>u.usuario==="Admin");
+    dbSet("usuarios",users.length?users:[{id:1,nome:"Administrador do Sistema",usuario:"Admin",senha:"123",perfil:"Administrador",status:"Ativo",criadoEm:todayISO()}]);
+    registrarAuditoria("Limpeza","Configurações");
+    toast("Todos os dados foram removidos com sucesso.");
+    navigateTo("dashboard");
+  });
+}
+
+function renderBackup(){
+  document.getElementById("viewContainer").innerHTML = `
+    <div class="breadcrumb">Início / Backup</div>
+    <div class="page-title">Backup</div>
+    <div class="panel" style="max-width:560px;text-align:center;padding:40px 24px">
+      <div class="kpi-icon" style="background:var(--primary-light);color:var(--primary);margin:0 auto 16px;width:56px;height:56px">${svgIcon('download')}</div>
+      <h3 style="margin-bottom:8px">Gerar Backup Completo</h3>
+      <p class="text-muted mb8" style="font-size:12.8px">Exporta todos os dados do sistema (LocalStorage) em um único arquivo JSON.</p>
+      <button class="btn btn-primary" onclick="gerarBackup()">Gerar Backup</button>
+    </div>`;
+}
+function gerarBackup(){
+  const backup = {};
+  DB_KEYS.forEach(k=>backup[k]=dbGetObj(k, k==="configuracoes"?{}:[]));
+  backup._meta = {geradoEm:new Date().toISOString(), versao:"1.0"};
+  const ts = new Date();
+  const name = `backup-estoque-${ts.getFullYear()}-${pad(ts.getMonth()+1,2)}-${pad(ts.getDate(),2)}-${pad(ts.getHours(),2)}-${pad(ts.getMinutes(),2)}-${pad(ts.getSeconds(),2)}.json`;
+  downloadFile(JSON.stringify(backup,null,2), name, "application/json");
+  registrarAuditoria("Backup","Backup");
+  toast("Backup realizado com sucesso.");
+}
+
+function renderRestaurar(){
+  document.getElementById("viewContainer").innerHTML = `
+    <div class="breadcrumb">Início / Restaurar</div>
+    <div class="page-title">Restaurar</div>
+    <div class="panel" style="max-width:560px;text-align:center;padding:40px 24px">
+      <div class="kpi-icon" style="background:var(--info-light);color:var(--info);margin:0 auto 16px;width:56px;height:56px">${svgIcon('upload')}</div>
+      <h3 style="margin-bottom:8px">Restaurar Backup</h3>
+      <p class="text-muted mb8" style="font-size:12.8px">Selecione um arquivo de backup (.json) gerado anteriormente pelo sistema.</p>
+      <input type="file" id="restoreFile" accept="application/json" style="margin:14px 0">
+      <br><button class="btn btn-primary" onclick="restaurarBackup()">Restaurar Backup</button>
+      <p id="restoreMsg" class="mt16" style="font-size:12.8px"></p>
+    </div>`;
+}
+function restaurarBackup(){
+  const input = document.getElementById("restoreFile");
+  const msg = document.getElementById("restoreMsg");
+  if(!input.files.length){ msg.textContent="Selecione um arquivo primeiro."; msg.className="mt16 text-danger"; return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      confirmModal("Confirma a restauração deste backup? Todos os dados atuais serão substituídos.",()=>{
+        DB_KEYS.forEach(k=>{ if(data[k]!==undefined) dbSet(k,data[k]); });
+        registrarAuditoria("Restauração","Restaurar");
+        toast("Backup restaurado com sucesso.");
+        navigateTo("dashboard");
+      });
+    }catch(err){
+      msg.textContent="Arquivo inválido."; msg.className="mt16 text-danger";
+    }
+  };
+  reader.readAsText(input.files[0]);
+}
+
+function renderSobre(){
+  document.getElementById("viewContainer").innerHTML = `
+    <div class="breadcrumb">Início / Sobre</div>
+    <div class="page-title">Sobre</div>
+    <div class="panel" style="max-width:600px">
+      <h3 style="margin-bottom:8px">SysSec WMS — Gestão de Estoque e Almoxarifado</h3>
+      <p class="text-muted" style="font-size:13px;line-height:1.7">
+        Sistema desenvolvido em HTML5, CSS3 e JavaScript puro, com persistência via LocalStorage — sem frameworks
+        e sem dependências externas. Interface inspirada em ERPs corporativos, com controle completo de estoque,
+        lotes, validade, localizações, movimentações, auditoria e relatórios.
+      </p>
+      <p class="mt16" style="font-size:12.8px">Desenvolvido por <strong>SysSec Tecnologia</strong> — Campinas/SP</p>
+      <p style="font-size:12.8px">LinkedIn: linkedin.com/in/marcellsouza</p>
+    </div>`;
+}
+
+/* =====================================================================
+   SECTION K — BUSCA GLOBAL
+===================================================================== */
+document.getElementById("globalSearch").addEventListener("input",function(){
+  const q=this.value.trim().toLowerCase();
+  const box=document.getElementById("searchResults");
+  if(!q){ box.classList.remove("show"); box.innerHTML=""; return; }
+  let results=[];
+  produtosList().forEach(p=>{ if((p.nome+p.codigo+p.codigoBarras).toLowerCase().includes(q)) results.push({label:p.nome,sub:"Produto • "+p.codigo,go:()=>navigateTo("produtos")}); });
+  fornecedoresList().forEach(f=>{ if((f.nomeFantasia+f.razaoSocial).toLowerCase().includes(q)) results.push({label:f.nomeFantasia,sub:"Fornecedor",go:()=>navigateTo("fornecedores")}); });
+  lotesList().forEach(l=>{ if(l.numeroLote.toLowerCase().includes(q)) results.push({label:l.numeroLote,sub:"Lote • "+nomeProduto(l.produtoId),go:()=>navigateTo("lotes")}); });
+  localizacoesList().forEach(l=>{ if(l.codigo.toLowerCase().includes(q)) results.push({label:l.codigo,sub:"Localização",go:()=>navigateTo("localizacoes")}); });
+  dbGet("inventarios").forEach(i=>{ if(i.numero.toLowerCase().includes(q)) results.push({label:i.numero,sub:"Inventário",go:()=>navigateTo("inventarios")}); });
+  results = results.slice(0,10);
+  if(!results.length){ box.innerHTML=`<div class="search-result-item text-muted">Nenhum resultado encontrado</div>`; }
+  else{ box.innerHTML = results.map((r,i)=>`<div class="search-result-item" onclick="globalSearchGo(${i})"><div>${r.label}</div><small>${r.sub}</small></div>`).join(""); window._searchResults=results; }
+  box.classList.add("show");
+});
+function globalSearchGo(i){ window._searchResults[i].go(); document.getElementById("searchResults").classList.remove("show"); document.getElementById("globalSearch").value=""; }
+document.addEventListener("click",e=>{ if(!e.target.closest(".topbar-search")) document.getElementById("searchResults").classList.remove("show"); });
+
+/* =====================================================================
+   SECTION L — ROTEADOR DE VIEWS
+===================================================================== */
+function renderView(view){
+  if(MODULES[view]){ renderCrudView(view); return; }
+  const map = {
+    dashboard: renderDashboard, movimentacoes: renderMovimentacoes, auditoria: renderAuditoria,
+    relatorios: renderRelatorios, configuracoes: renderConfiguracoes, backup: renderBackup,
+    restaurar: renderRestaurar, sobre: renderSobre,
+  };
+  (map[view]||renderDashboard)();
+}
+
+/* =====================================================================
+   SECTION M — BOOT
+===================================================================== */
+function bootApp(){
+  const cfg = dbGetObj("configuracoes",{});
+  applyTheme(cfg.tema||"light");
+  document.getElementById("brandName").textContent = cfg.nomeEmpresa || "SysSec WMS";
+  const su = getSessionUser();
+  if(su){
+    document.getElementById("userName").textContent = su.nome || su.usuario;
+    document.getElementById("userRole").textContent = su.perfil || "";
+    document.getElementById("userAvatar").textContent = (su.nome||su.usuario).charAt(0).toUpperCase();
+  }
+  if(localStorage.getItem(SIDEBAR_KEY)==="1" && window.innerWidth>900){
+    document.getElementById("sidebar").classList.add("collapsed");
+    document.getElementById("mainWrap").classList.add("collapsed");
+  }
+  renderSidebar();
+  navigateTo("dashboard");
+  resetInactivityTimer();
+  updateAlertDot();
+}
+function updateAlertDot(){
+  const produtos=produtosList(); const lotes=lotesList();
+  const has = produtos.some(p=>Number(p.estoqueAtual)<Number(p.estoqueMin)) || lotes.some(l=>daysBetween(todayISO(),l.dataValidade)<0);
+  document.getElementById("alertDot").style.display = has?"block":"none";
+}
+document.getElementById("btnAlerts").onclick=()=>navigateTo("dashboard");
+
+/* Inicialização geral */
+initDatabase();
+(function checkExistingSession(){
+  const su = getSessionUser();
+  if(su){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("app").style.display="block";
+    bootApp();
+  }
+})();
+</script>
+</body>
+</html>
